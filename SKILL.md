@@ -1,7 +1,7 @@
 ---
 name: oral-cut
 description: Use when 用户要剪辑口播/录屏视频、找废 take 或长静音、生成剪辑清单。本地转录 + 剪点计算，内容删减权归人；字幕可选，默认只做剪辑。
-version: 1.1.0
+version: 1.2.0
 license: MIT
 metadata:
   tags: [video, subtitle, transcription, ffmpeg, qwen3-asr, editing]
@@ -10,13 +10,67 @@ metadata:
 
 # oral-cut · 本地口播剪辑
 
-把一段口播视频变成**剪辑清单**。全程本地，零 API 成本。
+把一段口播视频变成**剪辑清单**。转录与剪辑执行全部在你本地跑完。
 
 > 一句话分工：**AI 管机械，人管内容；AI 出清单，人点头才剪。**
 
+## 关于成本与隐私
+
+- **转录与剪辑执行不需要任何云端 ASR API** —— 语音识别跑本地模型，剪点计算和 ffmpeg 渲染也都在本机。视频素材不上传。
+- **但"本地执行"不等于"整条链路零费用"。** 如果你是通过云端 Agent（Claude Code / Codex / 各类在线助手）调用本技能，**Agent 自身的模型推理仍可能产生费用**，发给它的文本（逐字稿、剪辑清单等）也要遵循对应服务的隐私政策。
+- 想做到真正全程离线：用本地 Agent，或直接命令行跑脚本。
+
 ---
 
-## 授权边界（先读这个，比技术细节重要）
+# 安装位置与仓库根目录（先读，这一步最容易错）
+
+> ⛔ **不要只复制 `SKILL.md`。**
+
+本技能**依赖同仓库的配套文件**才能真正运行：
+
+| 文件 | 为什么必须有 |
+|---|---|
+| `scripts/` | 环境引导、模型下载、转录、剪点计算、剪切 —— 全在这里 |
+| `requirements.txt` | 依赖清单（torch / qwen-asr / modelscope） |
+| `batch_transcriber.py` | 转录引擎本体 |
+| `docs/` | 规则与工作流细节 |
+| `config.example.json` | 配置模板 |
+
+只放一个 Markdown 文件，Agent 读完就知道该干什么，但**没有工具可调**。
+
+## 正确做法：整仓克隆到固定位置
+
+```bash
+git clone https://github.com/992939504/oral-cut.git ~/oral-cut
+```
+
+如果用的是带技能目录的 Harness（Hermes / Claude Code 等），把**整个仓库目录**放进去，而不是只拷 SKILL.md：
+
+```bash
+# 例：Hermes profile 的技能目录（换成你自己的）
+git clone https://github.com/992939504/oral-cut.git \
+  ~/.hermes/profiles/<profile>/skills/oral-cut
+```
+
+## 仓库根目录 = 你读到的这个 SKILL.md 所在目录
+
+**本文档里所有命令中的 `$ROOT`，都指仓库根目录。**
+
+**不要依赖"当前工作目录正好对"。** 先确定它：
+
+```bash
+# 你知道克隆到哪就用这个
+ROOT="$HOME/oral-cut"
+
+# 或者直接切过去，之后相对路径才成立
+cd "$ROOT"
+```
+
+**判定标准**：`ls "$ROOT"` 应该能看到 `SKILL.md`、`scripts/`、`batch_transcriber.py`。看不到就是路径错了。
+
+---
+
+## 授权边界（比技术细节重要）
 
 **内容删减权在人手里。AI 越权剪内容 = 事故。**
 
@@ -45,12 +99,12 @@ metadata:
 
 ## 判断"什么都没有"
 
-开工前先查三样：
+开工前先查三样（`$ROOT` = 仓库根）：
 
 ```bash
-ls -d .venv 2>/dev/null || echo "无虚拟环境"
-python -c "import qwen_asr" 2>/dev/null || echo "无依赖"
-ls models/qwen3_asr 2>/dev/null || echo "无模型"
+ls -d "$ROOT/.venv" 2>/dev/null || echo "无虚拟环境"
+"$ROOT/.venv/bin/python" -c "import qwen_asr" 2>/dev/null || echo "无依赖"
+ls "$ROOT/models/qwen3_asr" 2>/dev/null || echo "无模型"
 ```
 
 **任何一样缺失 → 走首次运行流程。不要跳过直接开始转录。**
@@ -66,11 +120,11 @@ ls models/qwen3_asr 2>/dev/null || echo "无模型"
 **不要往系统 Python 里装依赖。** 一定在仓库目录下建独立虚拟环境：
 
 ```bash
-python3 -m venv .venv
+python3 -m venv "$ROOT/.venv"
 ```
 
 - 位置固定在仓库根的 `.venv/`（已在 `.gitignore` 里）
-- 之后所有命令都用 `.venv/bin/python` / `.venv/bin/pip`
+- 之后所有命令都用 `"$ROOT/.venv/bin/python"` / `"$ROOT/.venv/bin/pip"`
 - 用户环境干净，卸载时删掉 `.venv/` 就完事
 
 **先向用户确认**：「我要在仓库目录建一个独立虚拟环境 `.venv/`，不会动你系统里的 Python。可以吗？」
@@ -78,26 +132,22 @@ python3 -m venv .venv
 ## 第 2 步 · 装依赖
 
 ```bash
-.venv/bin/pip install -r requirements.txt
+"$ROOT/.venv/bin/pip" install -r "$ROOT/requirements.txt"
 ```
 
-`requirements.txt` 包含：`torch`、`qwen-asr`（转录引擎）、`modelscope`（模型下载）。
+包含：`torch`、`qwen-asr`（转录引擎）、`modelscope`（模型下载）。
 
-**还需要 ffmpeg 在 PATH** —— 先检测，缺了就告诉用户怎么装（不要自己 apt install）。
+**还需要 ffmpeg 在 PATH** —— 先检测，缺了就告诉用户怎么装（不要自己 `apt install`）。
 
 ## 第 3 步 · 探测系统信息，推荐最合适的模型
 
 **不要问用户"你要哪个模型"——先探测，再给出带理由的推荐。**
 
-探测项：
-
 | 探测 | 方法 | 影响 |
 |---|---|---|
 | 有没有 NVIDIA 显卡 | `nvidia-smi --query-gpu=name,memory.total --format=csv,noheader` | 决定 GPU / CPU 档 |
 | 显存多大 | 同上 | 8G 以上才上 1.7B |
-| 磁盘余量 | `df -h .` | 够不够放模型 |
-
-然后给出推荐：
+| 磁盘余量 | `df -h "$ROOT"` | 够不够放模型 |
 
 | 探测结果 | 推荐档位 | 下什么 | 体积 |
 |---|---|---|---|
@@ -111,7 +161,7 @@ python3 -m venv .venv
 国内优先 **ModelScope**（比 HuggingFace 快很多）；用户在国外可用 `--source hf`。
 
 ```bash
-.venv/bin/python scripts/setup_models.py --size small      # 交互：列清单 → 等确认 → 下载
+"$ROOT/.venv/bin/python" "$ROOT/scripts/setup_models.py" --size small
 ```
 
 脚本会**先列出**要下的模型、体积、目标路径，**等你敲 y 才动手**。
@@ -119,10 +169,10 @@ python3 -m venv .venv
 ## 一键走完
 
 ```bash
-bash scripts/setup.sh
+bash "$ROOT/scripts/setup.sh"
 ```
 
-这个脚本把上面四步串起来：检测环境 → 建 venv → 装依赖 → 探测系统 → 推荐模型 → 确认后下载。
+把上面四步串起来：检测环境 → 建 venv → 装依赖 → 探测系统 → 推荐模型 → 确认后下载。
 **每一处需要用户点头的地方都会停下来等。**
 
 ---
@@ -143,17 +193,16 @@ bash scripts/setup.sh
 拿到用户的文件，先确认它是什么、能不能直接处理：
 
 ```bash
-ffprobe -v error -show_entries format=format_name,duration -show_entries stream=codec_type,codec_name -of default=nw=1 "文件"
+ffprobe -v error -show_entries format=format_name,duration \
+  -show_entries stream=codec_type,codec_name -of default=nw=1 "文件"
 ```
-
-要看三件事：
 
 | 看什么 | 为什么 |
 |---|---|
 | 是不是媒体文件 | 不认识的格式先问用户，别猜 |
 | 有没有音轨 | **没有音轨 = 没法转录**，直接告诉用户 |
-| 时长多长 | 长音频要分段（引擎有自适应阈值），提前知道好安排 |
-| 采样率 / 码率 | 过低先提醒用户（会影响识别质量） |
+| 时长多长 | 长音频要分段（引擎有自适应阈值） |
+| 采样率 / 码率 | 过低先提醒用户（影响识别质量） |
 
 **输出一句人话**：「这是一条 3 分 12 秒的 mp4，有音轨，可以处理。」
 
@@ -174,7 +223,7 @@ ffmpeg -y -v error -i "原片.mp4" -af "volume=+18dB" -c:v copy -c:a aac -b:a 19
 ### 转录
 
 ```bash
-bash scripts/transcribe.sh --srt "<work_dir>/原片_g18.mp4"
+bash "$ROOT/scripts/transcribe.sh" --srt "<work_dir>/原片_g18.mp4"
 ```
 
 **产物**（两个文件，与输入同目录同名）：
@@ -188,22 +237,19 @@ bash scripts/transcribe.sh --srt "<work_dir>/原片_g18.mp4"
 
 > `words.json` 是**裸数组** `[{"text":"大","start":0.16,"end":0.32}, ...]`，不是契约格式。要喂给别的渲染器时按对方 schema 包一层。
 
-**这一步的 SRT 是内部工具，不是成品字幕。** 见下方「字幕是可选项」。
+**这一步的 SRT 是内部工具，不是成品字幕。** 见第三部分。
 
 ## ③ 出剪辑清单，等用户自己定
 
 ```bash
-python3 scripts/plan_cut.py "<work_dir>/原片_g18.words.json" \
+"$ROOT/.venv/bin/python" "$ROOT/scripts/plan_cut.py" \
+  "<work_dir>/原片_g18.words.json" \
   --media "<work_dir>/原片_g18.mp4" \
   --repeats \
   --out "<work_dir>/plan.json"
 ```
 
-脚本会：
-
-1. 找**字级间隙** ≥ 阈值的静音段（主判据）
-2. 做**电平交叉验证**（标记「可能是漏识别」的疑似项）
-3. 可选附带**疑似重复**提示
+脚本会：① 找**字级间隙** ≥ 阈值的静音段（主判据）② 做**电平交叉验证**（标记「可能是漏识别」）③ 可选附带**疑似重复**提示。
 
 **产物是一张清单，不是剪辑结果**：
 
@@ -223,7 +269,8 @@ python3 scripts/plan_cut.py "<work_dir>/原片_g18.words.json" \
 ## ④ 执行剪切
 
 ```bash
-python3 scripts/apply_cut.py "<work_dir>/plan.json" --media "<work_dir>/原片_g18.mp4" --suffix cut-v1
+"$ROOT/.venv/bin/python" "$ROOT/scripts/apply_cut.py" \
+  "<work_dir>/plan.json" --media "<work_dir>/原片_g18.mp4" --suffix cut-v1
 ```
 
 - **音画一起剪**：视频流与音频流在同一个 `filter_complex` 里同步切、同步拼
@@ -244,7 +291,7 @@ python3 scripts/apply_cut.py "<work_dir>/plan.json" --media "<work_dir>/原片_g
 > 「剪辑好了。要不要再出一版带字幕的？」
 
 - **默认：不加。** 用户没说，就只交剪辑成片。
-- 用户说要 → 走下方「字幕是可选项」。
+- 用户说要 → 走第三部分。
 - **不要主动提议**加字幕、字幕样式、字幕包装。
 
 ---
@@ -263,13 +310,13 @@ python3 scripts/apply_cut.py "<work_dir>/plan.json" --media "<work_dir>/原片_g
 
 ### 做法 A · 出一份 SRT 给他导入（推荐）
 
-直接把 `<名>.srt` 给他，让他导进剪辑软件校对。
+直接把 `<名>.srt` 给他，导进剪辑软件校对。
 
 **注意**：低电平素材上 ASR 在同一位置可能读出三种结果——**先让人核对文字**，再导。
 
 ### 做法 B · 烧字幕进画面
 
-只有用户明确要"字幕印在画面上"时才做，**另存新文件名**，绝不动交付版：
+只在用户明确要"字幕印在画面上"时才做，**另存新文件名**，绝不动交付版：
 
 ```bash
 # SRT 先复制到纯 ASCII 路径——subtitles 滤镜吃中文路径会出问题
@@ -338,7 +385,7 @@ ffmpeg -y -v error -i "<成片>-cut-v1.mp4" \
 
 ## 配置
 
-复制 `config.example.json` 为 `config.json`：
+复制 `config.example.json` 为 `config.json`（放在**仓库根**）：
 
 | 字段 | 说明 |
 |---|---|
@@ -353,11 +400,13 @@ ffmpeg -y -v error -i "<成片>-cut-v1.mp4" \
 
 都是踩过的，不是理论：
 
-1. **`.bat` 结尾有 `pause`、`.ps1` 多文件时有 `Read-Host`** —— 都会挂住等按键。用 `batch_transcriber.py` 直接调。
-2. **转录必须带 `--srt`** —— 不带的话不会产出逐字时间戳 `.words.json`，剪点就算不了。
-3. **不要把 WSL 路径（`/mnt/...`）直接传给 Windows 进程** —— 它读不了，要先 `wslpath -w`。
-4. **exe 的 cwd 不能是 UNC 路径** —— 会警告并回退。脚本里先 `cd` 到实体目录。
-5. **低电平素材不能直接烧字幕** —— 错的字会进画面。
-6. **`silencedetect` 的边界不可信** —— 见上。
-7. **剪完必须重识别验证** —— 时长对不代表没吞字。
-8. **显存小的时候别硬上 1.7B** —— 引擎会自适应分段，但 8G 以下是真跑不动，选 0.6B。
+1. **只装 SKILL.md 跑不起来** —— 必须整仓克隆，见开头「安装位置与仓库根目录」。
+2. **命令不要依赖当前工作目录** —— 一律用 `$ROOT/...` 绝对路径。
+3. **`.bat` 结尾有 `pause`、`.ps1` 多文件时有 `Read-Host`** —— 都会挂住等按键。用 `batch_transcriber.py` 直接调。
+4. **转录必须带 `--srt`** —— 不带的话不会产出逐字时间戳 `.words.json`，剪点就算不了。
+5. **不要把 WSL 路径（`/mnt/...`）直接传给 Windows 进程** —— 它读不了，要先 `wslpath -w`。
+6. **exe 的 cwd 不能是 UNC 路径** —— 会警告并回退。脚本里先 `cd` 到实体目录。
+7. **低电平素材不能直接烧字幕** —— 错的字会进画面。
+8. **`silencedetect` 的边界不可信** —— 见上。
+9. **剪完必须重识别验证** —— 时长对不代表没吞字。
+10. **显存小的时候别硬上 1.7B** —— 引擎会自适应分段，但 8G 以下是真跑不动，选 0.6B。

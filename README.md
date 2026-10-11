@@ -2,7 +2,9 @@
 
 > 把一段口播视频丢进去，出**剪辑清单**——不是自动剪，是**告诉你该剪哪儿，你点头才剪**。
 
-全程本地运行，零 API 成本。不碰云端，不上传你的素材。
+**转录和剪辑执行全部在你本地完成** —— 不调用任何云端 ASR API，视频素材不上传。
+
+不过要说准确一点：如果你是通过**云端 Agent**（Claude Code / Codex / 各类在线助手）调用它，**Agent 自身的模型推理仍可能产生费用**，发给它的文本（逐字稿、剪辑清单）也要遵循对应服务的隐私政策。想真正全程离线，就用本地 Agent，或直接跑命令行。
 
 ---
 
@@ -61,27 +63,47 @@
 
 ## 安装
 
-### 一键（推荐）
+> ⛔ **不要把单个 `SKILL.md` 复制进技能目录就算了。**
+>
+> 本技能依赖同仓库的配套文件才能运行：`scripts/`（环境引导、模型下载、转录、剪点计算、剪切）、`requirements.txt`、`batch_transcriber.py`（转录引擎）、`docs/`。
+> 只装一个 Markdown 文件，Agent 知道该干什么，但**没有工具可调**。
+
+### 第 1 步 · 整仓克隆到固定位置
 
 ```bash
-bash scripts/setup.sh
+git clone https://github.com/992939504/oral-cut.git ~/oral-cut
 ```
 
-它会依次：**检测环境 → 建独立虚拟环境 → 装依赖 → 探测你的机器 → 推荐最合适的模型 → 你确认后从 ModelScope 下载**。
+位置随你，下文一律用 `$ROOT` 指代**仓库根目录**（= `SKILL.md` 所在目录）。
+
+**判定标准**：`ls "$ROOT"` 应该能看到 `SKILL.md`、`scripts/`、`batch_transcriber.py`。看不到就是路径错了。
+
+### 第 2 步 · 交给 AI agent（Hermes / Claude Code / Codex 等）
+
+把**整个仓库目录**放进技能目录，**不是只拷 SKILL.md**：
+
+```bash
+# 例：Hermes profile 的技能目录（换成你自己的）
+git clone https://github.com/992939504/oral-cut.git \
+  ~/.hermes/profiles/<profile>/skills/oral-cut
+```
+
+### 第 3 步 · 一键装环境
+
+```bash
+bash "$ROOT/scripts/setup.sh"
+```
+
+依次：**检测环境 → 建独立虚拟环境 → 装依赖 → 探测你的机器 → 推荐最合适的模型 → 你确认后从 ModelScope 下载**。
 
 每一处需要你点头的地方都会停下来等。**不会默默装任何东西。**
-
-### 给 AI agent 用（Hermes / Claude Code / Codex 等）
-
-把 `SKILL.md` 装进你的技能目录，或者说一句：
-
-> 把这份 SKILL.md 安装成一个叫 `oral-cut` 的技能。
-
-SKILL.md 里写了完整的首次运行引导和工作流，agent 会照着走。
 
 ### 手动跑
 
 ```bash
+ROOT=~/oral-cut        # ← 改成你克隆到的位置
+cd "$ROOT"
+
 # 1. 建虚拟环境（一定用独立的，别装进系统 Python）
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
@@ -97,6 +119,9 @@ bash scripts/transcribe.sh 你的视频.mp4
 ```
 
 需要 `ffmpeg` 在 PATH。
+
+> **先 `cd "$ROOT"`，再跑上面这些相对路径。** 不要依赖"当前工作目录正好对"。
+> 仓库里的脚本自己会用绝对路径定位同目录的文件（`setup.sh` / `transcribe.sh` 都基于自身位置反推），但文档里的相对路径是相对**仓库根**的。
 
 ### 字幕呢？
 
@@ -123,7 +148,7 @@ bash scripts/transcribe.sh 你的视频.mp4
 
 ## 它不做什么
 
-- **不生成字幕成品**。它出的 SRT 是内部稿，用来定位剪点。成品字幕交给你惯用的剪辑软件。
+- **默认不生成成品字幕**。它出的 SRT 是内部稿，用来定位剪点。要不要字幕由你定，成品字幕交给你惯用的剪辑软件。
 - **不自动剪**。它出清单，你点头才剪。
 - **不做包装**。没有花字、转场、B-roll、动效。（包装层是另一个项目）
 
