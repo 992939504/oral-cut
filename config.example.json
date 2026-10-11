@@ -1,0 +1,23 @@
+{
+  "_说明": "复制本文件为 config.json 后按需修改。留空/缺失的字段会退回默认值。",
+
+  "python": "python3",
+  "_python": "跑引擎的解释器。WSL 调 Windows 时填 Windows python 全路径，例如 /mnt/c/Users/<你>/miniconda3/python.exe",
+
+  "engine": "",
+  "_engine": "引擎脚本路径。留空 = 仓库根目录下的 batch_transcriber.py",
+
+  "work_dir": "./work",
+  "_work_dir": "中间产物区（可清理区）：提音量副本、SRT、words.json、剪辑脚本都落这里。想清的时候整个删掉，不会牵连别的东西。",
+
+  "silence_sec": 0.9,
+  "_silence_sec": "静音剪点阈值（秒）。≤ 该值一律保留（说话换气）。默认 0.9；早期用过 0.6，实测剪完太紧、呼吸被切，不要改回去。",
+
+  "volume_boost_db": 18,
+  "_volume_boost_db": "识别前的提音量增益。动圈麦/手机内置麦素材偏轻，先提音量再识别能显著降低错字。",
+
+  "corrections": {
+    "_说明": "ASR 系统性错字替换表：'识别出来的': '实际说的'。你自己的方言/口音规律只有你知道——比如某些音分不清、连读吞字，把高频错误填在这里，每次转录后自动提示。",
+    "示例错字": "示例正字"
+  }
+}

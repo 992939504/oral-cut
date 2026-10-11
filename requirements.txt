@@ -1,0 +1,10 @@
+# oral-cut 运行时依赖
+# 建议在独立的 Python 3.12 环境里安装（官方推荐，避免依赖冲突）
+
+# 转录引擎
+torch
+qwen-asr
+
+# 模型下载（按需求二选一，setup_models.py 会检测并提示）
+modelscope
+# huggingface_hub[cli]
