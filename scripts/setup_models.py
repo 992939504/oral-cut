@@ -33,7 +33,7 @@ TIERS = {
         ("Qwen/Qwen3-ForcedAligner-0.6B", "Qwen3-ForcedAligner-0.6B", 1.8),
     ],
     "small": [
-        ("Qwen/Qwen3-ASR-0.6B", "Qwen3-ASR-0.6B", 1.6),
+        ("Qwen/Qwen3-ASR-0.6B", "Qwen3-ASR-0.6B", 1.9),
         ("Qwen/Qwen3-ForcedAligner-0.6B", "Qwen3-ForcedAligner-0.6B", 1.8),
     ],
 }

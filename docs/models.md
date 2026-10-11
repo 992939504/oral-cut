@@ -24,7 +24,7 @@
 
 | 模型 | 体积 | 逐字时间戳 |
 |---|---|---|
-| `Qwen/Qwen3-ASR-1.7B` | 约 4.2 GB | ✅ |
+| `Qwen/Qwen3-ASR-1.7B` | 约 4.7 GB | ✅ |
 | `Qwen/Qwen3-ForcedAligner-0.6B` | 约 1.8 GB | ✅（负责对齐） |
 
 **选择理由**：中文强，官方支持 timestamp prediction。两人组合 = 识别 + 强制对齐，逐字精度最高。
@@ -33,7 +33,7 @@
 
 | 模型 | 体积 | 逐字时间戳 |
 |---|---|---|
-| `Qwen/Qwen3-ASR-0.6B` | 约 1.2 GB | ✅ |
+| `Qwen/Qwen3-ASR-0.6B` | 约 1.9 GB | ✅ |
 | `Qwen/Qwen3-ForcedAligner-0.6B` | 约 1.8 GB | ✅ |
 
 **为什么不是更快的 SenseVoice？**

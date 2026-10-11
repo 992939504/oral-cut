@@ -151,10 +151,10 @@ python3 -m venv "$ROOT/.venv"
 
 | 探测结果 | 推荐档位 | 下什么 | 体积 |
 |---|---|---|---|
-| 有 GPU，显存 ≥ 8G | `full` | Qwen3-ASR-1.7B + ForcedAligner-0.6B | ~6 GB |
-| 无 GPU / 显存小 | `small` | Qwen3-ASR-0.6B + ForcedAligner-0.6B | ~3 GB |
+| 有 GPU，显存 ≥ 8G | `full` | Qwen3-ASR-1.7B + ForcedAligner-0.6B | ~6.5 GB |
+| 无 GPU / 显存小 | `small` | Qwen3-ASR-0.6B + ForcedAligner-0.6B | ~3.7 GB |
 
-**说清理由再问**：「检测到你没有独显，推荐 CPU 档（Qwen3-ASR-0.6B）——它和 GPU 档用同一套流程，只是慢一点，逐字时间戳一样准。要下这个吗？约 3 GB。」
+**说清理由再问**：「检测到你没有独显，推荐 CPU 档（Qwen3-ASR-0.6B）——它和 GPU 档用同一套流程，只是慢一点，逐字时间戳一样准。要下这个吗？约 3.7 GB。」
 
 ## 第 4 步 · 确认后从 ModelScope 下载
 

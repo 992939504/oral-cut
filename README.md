@@ -135,8 +135,8 @@ bash scripts/transcribe.sh 你的视频.mp4
 
 | 你的机器 | 推荐 | 下载体积 |
 |---|---|---|
-| 有 NVIDIA 显卡（8G+ 显存） | Qwen3-ASR-1.7B + ForcedAligner | 约 6 GB |
-| 显存小 / 只想跑 CPU | **Qwen3-ASR-0.6B** + ForcedAligner | 约 3 GB |
+| 有 NVIDIA 显卡（8G+ 显存） | Qwen3-ASR-1.7B + ForcedAligner | 约 6.5 GB |
+| 显存小 / 只想跑 CPU | **Qwen3-ASR-0.6B** + ForcedAligner | 约 3.7 GB |
 | 极端低配（树莓派级） | sherpa-onnx + Paraformer | 约 300 MB |
 
 详见 [`docs/models.md`](docs/models.md)。
