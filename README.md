@@ -61,27 +61,48 @@
 
 ## 安装
 
+### 一键（推荐）
+
+```bash
+bash scripts/setup.sh
+```
+
+它会依次：**检测环境 → 建独立虚拟环境 → 装依赖 → 探测你的机器 → 推荐最合适的模型 → 你确认后从 ModelScope 下载**。
+
+每一处需要你点头的地方都会停下来等。**不会默默装任何东西。**
+
 ### 给 AI agent 用（Hermes / Claude Code / Codex 等）
 
 把 `SKILL.md` 装进你的技能目录，或者说一句：
 
 > 把这份 SKILL.md 安装成一个叫 `oral-cut` 的技能。
 
+SKILL.md 里写了完整的首次运行引导和工作流，agent 会照着走。
+
 ### 手动跑
 
 ```bash
-# 1. 装依赖（首次）
-pip install torch qwen-asr
-# 需要 ffmpeg 在 PATH
+# 1. 建虚拟环境（一定用独立的，别装进系统 Python）
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
 
 # 2. 下载模型（会先列清单让你确认体积和路径）
-python scripts/setup_models.py
+.venv/bin/python scripts/setup_models.py
 
 # 3. 转录
 bash scripts/transcribe.sh 你的视频.mp4
+
+# 4. 出剪辑清单（只算，不剪）
+.venv/bin/python scripts/plan_cut.py 你的视频.words.json --media 你的视频.mp4 --repeats
 ```
 
-`setup_models.py` **不会**默默下载几个 G 的东西——它会先把要下的模型、体积、目标路径列出来，等你敲 `y`。
+需要 `ffmpeg` 在 PATH。
+
+### 字幕呢？
+
+**默认不做字幕，只做剪辑。**
+
+转录出来的 SRT 是内部工具（用来定位剪点），不是成品字幕。要成片字幕的话，问一声就行——见 SKILL.md 的「字幕是可选项」。
 
 ---
 
